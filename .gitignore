@@ -1,0 +1,5 @@
+git rm -r --cached entv
+git add .gitignore
+git commit -m "Excluir entorno virtual"
+git push origin dev/jose
+
