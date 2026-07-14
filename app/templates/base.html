@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ISTG - Sistema Web ML{% endblock %}</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    
+    <style>
+        :root {
+            --brand-orange: #F96302;
+            --brand-black: #1A1A1A;
+            --istg-light-bg: #f8f9fa;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--istg-light-bg);
+            overflow-x: hidden;
+        }
+
+        /* Estilos del Sidebar */
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: var(--brand-black);
+            z-index: 1000;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar .sidebar-header {
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.75);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            font-size: 0.92rem;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+
+        #sidebar .nav-link:hover, #sidebar .nav-link.active {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.08);
+            border-left-color: var(--brand-orange);
+        }
+
+        /* Resaltado especial para el Panel de Administración de Datos */
+        #sidebar .nav-link.admin-active {
+            color: #ffc107 !important;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-left-color: #ffc107;
+            font-weight: 600;
+        }
+
+        #sidebar .nav-link i {
+            margin-right: 12px;
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Enlaces deshabilitados por falta de datos (Fase 3 incompleta) */
+        #sidebar .nav-link.disabled {
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Flecha del submenú de Regresión */
+        #sidebar .collapse-arrow {
+            transition: transform 0.2s ease;
+        }
+        #sidebar .collapse-arrow.rotated,
+        #sidebar [aria-expanded="true"] .collapse-arrow {
+            transform: rotate(-180deg);
+        }
+
+        /* Sub-ítems del menú de Regresión */
+        #submenuRegresion .nav-link {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-left: 3px solid transparent;
+        }
+        #submenuRegresion .nav-link.active,
+        #submenuRegresion .nav-link:hover {
+            border-left-color: var(--brand-orange);
+            background-color: rgba(255,255,255,0.06);
+        }
+
+        .menu-divider {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 10px 0 5px 0;
+        }
+
+        /* Área de Contenido Principal */
+        #main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-navbar {
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 15px 30px;
+        }
+
+        .content-body {
+            flex: 1;
+            padding: 30px;
+        }
+
+        /* Componentes de Tarjetas Reutilizables (Cards) */
+        .card {
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.01);
+            background-color: #ffffff;
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            font-weight: 600;
+            color: var(--brand-orange);
+        }
+
+        /* Overrides de marca: redirige el azul "primary" por defecto de Bootstrap
+           hacia la paleta naranja/negro de la ferretería, de forma global para
+           toda la app (íconos, botones, bordes, badges con text-primary/bg-primary). */
+        .text-primary { color: var(--brand-orange) !important; }
+        .border-primary { border-color: var(--brand-orange) !important; }
+        .btn-primary {
+            background-color: var(--brand-orange) !important;
+            border-color: var(--brand-orange) !important;
+            color: #fff !important;
+        }
+        .btn-outline-primary {
+            color: var(--brand-orange) !important;
+            border-color: var(--brand-orange) !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--brand-orange) !important;
+            color: #fff !important;
+        }
+        .bg-primary { background-color: var(--brand-orange) !important; }
+        .bg-primary.bg-opacity-10 { background-color: rgba(249, 99, 2, 0.1) !important; }
+
+        /* Estilo para las alertas flotantes */
+        .flash-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    {% if current_user.is_authenticated %}
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='images/Home-Depot-Logo2.png') }}" alt="Home Depot Logo" class="img-fluid mb-2" style="max-height: 60px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.25));">
+            <div class="text-white small fw-bold tracking-wide">PANEL DE CONTROL ML</div>
+        </div>
+        
+        <!-- Bloque del Menú de Navegación del Servidor -->
+        <div class="nav flex-column flex-grow-1 pt-2" style="overflow-y: auto;">
+            
+            <small class="text-uppercase px-3 pt-2 pb-1 d-block text-white-50" style="font-size: 0.72rem; letter-spacing: 0.5px;">General</small>
+            <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+            
+            <div class="menu-divider"></div>
+            
+            <small class="text-uppercase px-3 pt-1 pb-1 d-block text-white-50" style="font-size: 0.72rem; letter-spacing: 0.5px;">Gobierno de Datos</small>
+            <!-- Explorador accesible por alumnos, docentes y administradores -->
+            <a href="{{ url_for('data_manager.explorer') }}" class="nav-link {% if request.endpoint == 'data_manager.explorer' %}active{% endif %}">
+                <i class="bi bi-database-check"></i> Explorador de Datos
+            </a>
+            <!-- Panel exclusivo del Administrador para la sincronización matemática -->
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('data_manager.admin_panel') }}" class="nav-link {% if request.endpoint in ['data_manager.admin_panel', 'data_manager.generate'] %}admin-active{% endif %}">
+                <i class="bi bi-sliders text-warning"></i> <span class="text-warning">Panel Admin (Datos)</span>
+            </a>
+            {% endif %}
+            
+            <div class="menu-divider"></div>
+            
+            <small class="text-uppercase px-3 pt-1 pb-1 d-block text-white-50" style="font-size: 0.72rem; letter-spacing: 0.5px;">Módulos Analíticos</small>
+
+            {% set in_prediction = 'prediction' in request.endpoint %}
+
+            <a href="#submenuRegresion" data-bs-toggle="collapse" role="button"
+               aria-expanded="{{ 'true' if in_prediction else 'false' }}"
+               class="nav-link d-flex align-items-center justify-content-between
+                      {% if in_prediction %}active{% endif %}
+                      {% if not datos_listos %}disabled opacity-50{% endif %}"
+               {% if not datos_listos %}
+               onclick="event.preventDefault();"
+               title="No disponible: faltan datos de la Fase 3 (preprocesamiento)"
+               tabindex="-1" aria-disabled="true"
+               {% endif %}>
+                <span>
+                    <i class="bi bi-graph-up-arrow"></i> Regresión (Ventas)
+                    {% if not datos_listos %}<i class="bi bi-lock-fill ms-1 small text-warning"></i>{% endif %}
+                </span>
+                {% if datos_listos %}
+                <i class="bi bi-chevron-down small collapse-arrow {{ 'rotated' if in_prediction }}"></i>
+                {% endif %}
+            </a>
+
+            {% if datos_listos %}
+            <div class="collapse {% if in_prediction %}show{% endif %}" id="submenuRegresion">
+                <div class="ps-3 pb-1" style="border-left: 2px solid rgba(255,255,255,0.15); margin-left: 20px;">
+                    <a href="{{ url_for('prediction.dashboard', modulo_id=1) }}"
+                       class="nav-link py-2 {% if request.endpoint == 'prediction.dashboard' and request.view_args.get('modulo_id') == 1 %}active{% endif %}"
+                       style="font-size: 0.85rem;">
+                        <i class="bi bi-cart3 me-2"></i>M1: Transaccional
+                    </a>
+                    <a href="{{ url_for('prediction.dashboard', modulo_id=2) }}"
+                       class="nav-link py-2 {% if request.endpoint == 'prediction.dashboard' and request.view_args.get('modulo_id') == 2 %}active{% endif %}"
+                       style="font-size: 0.85rem;">
+                        <i class="bi bi-calendar3 me-2"></i>M2: Demanda Semanal
+                    </a>
+                    <a href="{{ url_for('prediction.dashboard', modulo_id=5) }}"
+                       class="nav-link py-2 {% if request.endpoint == 'prediction.dashboard' and request.view_args.get('modulo_id') == 5 %}active{% endif %}"
+                       style="font-size: 0.85rem;">
+                        <i class="bi bi-cash-coin me-2"></i>M5: Rentabilidad
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Nota (v7.0/v9.0): el submenú M3/M6 vuelve a ser un enlace simple —
+                 el Módulo 6 fue retirado del alcance (ver Corrección 12), y un
+                 desplegable con un solo ítem no aporta nada al usuario. Si se
+                 agrega un nuevo módulo de clasificación en el futuro, restaurar
+                 el patrón de collapse (ver #submenuRegresion como referencia). -->
+            <a href="{% if datos_listos %}{{ url_for('classification.dashboard', modulo_id=3) }}{% else %}#{% endif %}"
+               class="nav-link {% if 'classification' in request.endpoint %}active{% endif %} {% if not datos_listos %}disabled opacity-50{% endif %}"
+               {% if not datos_listos %}
+               onclick="event.preventDefault();"
+               title="No disponible: faltan datos de la Fase 3 (preprocesamiento)"
+               tabindex="-1" aria-disabled="true"
+               {% endif %}>
+                <i class="bi bi-diagram-3"></i> Clasificación
+                {% if not datos_listos %}<i class="bi bi-lock-fill ms-auto small text-warning"></i>{% endif %}
+            </a>
+
+            <a href="{% if datos_listos %}{{ url_for('clustering.index') }}{% else %}#{% endif %}"
+               class="nav-link {% if 'clustering' in request.endpoint %}active{% endif %} {% if not datos_listos %}disabled opacity-50{% endif %}"
+               {% if not datos_listos %}
+               onclick="event.preventDefault();"
+               title="No disponible: faltan datos de la Fase 3 (preprocesamiento)"
+               tabindex="-1" aria-disabled="true"
+               {% endif %}>
+                <i class="bi bi-bounding-box-circles"></i> Clustering
+                {% if not datos_listos %}<i class="bi bi-lock-fill ms-auto small text-warning"></i>{% endif %}
+            </a>
+        </div>
+
+        <div class="p-3 border-top border-secondary border-opacity-25 bg-black bg-opacity-10">
+            <div class="text-muted small mb-1">Usuario activo:</div>
+            <div class="text-white text-truncate small mb-2" title="{{ current_user.username }}">
+                <i class="bi bi-person-circle me-1"></i> {{ current_user.username }}
+                {% if current_user.is_admin %}
+                    <span class="badge bg-warning text-dark px-1 ms-1" style="font-size: 0.65rem;">Admin</span>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-sm w-100">
+                <i class="bi bi-box-arrow-left"></i> Cerrar Sesión
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div id="main-content" style="{% if not current_user.is_authenticated %}margin-left: 0;{% endif %}">
+        
+        {% if current_user.is_authenticated %}
+        <div class="main-navbar d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-muted fw-normal">Instituto Superior Tecnológico Guayaquil</h5>
+            <span class="badge bg-light text-dark border"><i class="bi bi-cpu me-1"></i> Entorno de Producción</span>
+        </div>
+        {% endif %}
+
+        <div class="container-fluid px-4 mt-3">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="content-body">
+            {% block content %}{% endblock %}
+        </div>
+
+        <footer class="bg-white text-center py-3 border-top mt-auto text-muted small">
+            &copy; 2026 ISTG — Plataforma de Machine Learning y Analítica Predictiva.
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}ISTG - Registro Académico{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 75vh;">
+    <div class="col-md-6 col-lg-5">
+        <div class="text-center mb-4">
+            <img src="{{ url_for('static', filename='images/Home-Depot-Logo2.png') }}" alt="Home Depot Logo" class="img-fluid mb-2" style="max-height: 90px;">
+            <h4 class="fw-bold mt-2 text-dark" style="color: var(--brand-orange) !important;">Crear Cuenta de Estudiante</h4>
+            <p class="text-muted small">Regístrate para comenzar a entrenar y evaluar modelos de Machine Learning</p>
+        </div>
+
+        <div class="card border-0 shadow-sm p-4">
+            <div class="card-body">
+                <form action="{{ url_for('auth.register') }}" method="POST">
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label text-muted small fw-bold">Nombre de Usuario</label>
+                        <input type="text" class="form-control bg-light border-0" id="username" name="username" placeholder="Escribe un alias único" required autofocus>
+                        <div class="form-text text-muted extra-small" style="font-size: 0.75rem;">Sin espacios ni caracteres especiales.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label text-muted small fw-bold">Correo Electrónico Institucional</label>
+                        <input type="email" class="form-control bg-light border-0" id="email" name="email" placeholder="usuario@istg.edu.ec" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label text-muted small fw-bold">Contraseña Segura</label>
+                        <input type="password" class="form-control bg-light border-0" id="password" name="password" placeholder="Mínimo 8 caracteres" required>
+                    </div>
+
+                    <button type="submit" class="btn w-100 text-white fw-bold py-2 shadow-sm" style="background-color: var(--brand-orange);">
+                        Registrar Cuenta <i class="bi bi-person-plus ms-1"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="text-muted small">¿Ya posees una cuenta activa? <a href="{{ url_for('auth.login') }}" class="text-decoration-none fw-bold" style="color: var(--brand-orange);">Inicia sesión aquí</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

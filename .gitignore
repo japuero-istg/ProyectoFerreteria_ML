@@ -1,0 +1,26 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Variables de entorno con secretos/credenciales (NO subir)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+
+# Migraciones generadas localmente (opcional)
+# app/migrations/versions/*.py
+
+# Logs y datos generados
+*.log
+instance/

@@ -1,0 +1,53 @@
+from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask_login import login_required
+
+prediction_bp = Blueprint("prediction", __name__, url_for_security_scheme="http")
+
+
+@prediction_bp.route("/prediction")
+@login_required
+def index():
+    """Ruta raíz del módulo. Redirige por defecto al Enfoque A (Transaccional)."""
+    return redirect(url_for("prediction.transaccional"))
+
+
+@prediction_bp.route("/prediction/transaccional", methods=["GET", "POST"])
+@login_required
+def transaccional():
+    """ENFOQUE A: Predicción de Unidades Vendidas a nivel transaccional."""
+    # Simulación de contexto para renderizado inicial de la Fase 3
+    resultados = None
+    
+    if request.method == "POST":
+        # Aquí se capturarán los hiperparámetros de scikit-learn en el futuro
+        algoritmo = request.form.get("algoritmo")
+        test_size = request.form.get("test_size")
+        # Lógica de entrenamiento pendiente...
+        resultados = {
+            "status": "success",
+            "algoritmo": algoritmo,
+            "metricas": {"r2": 0.84, "mae": 1.2, "rmse": 1.5}
+        }
+        flash(f"Modelo {algoritmo} entrenado exitosamente para nivel transaccional.", "success")
+
+    return render_template("prediction/transaccional.html", resultados=resultados)
+
+
+@prediction_bp.route("/prediction/demanda", methods=["GET", "POST"])
+@login_required
+def demanda():
+    """ENFOQUE B: Predicción de Demanda Semanal agregada para reabastecimiento."""
+    resultados = None
+    
+    if request.method == "POST":
+        algoritmo = request.form.get("algoritmo")
+        # Lógica de agregación y entrenamiento pendiente...
+        resultados = {
+            "status": "success",
+            "algoritmo": algoritmo,
+            "metricas": {"r2": 0.79, "mae": 14.5, "rmse": 19.2}
+        }
+        flash(f"Modelo {algoritmo} entrenado exitosamente para demanda semanal.", "success")
+
+    return render_template("prediction/demanda.html", resultados=resultados)
+

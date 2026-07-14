@@ -1,0 +1,34 @@
+from datetime import datetime
+
+from flask_login import UserMixin
+
+from app.models import bcrypt, db
+
+
+class User(UserMixin, db.Model):
+    __tablename__ = "usuarios"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+# NUEVO CAMPO SINCRONIZADO
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+
+    resultados = db.relationship(
+        "MLResult",
+        back_populates="usuario",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
+    def set_password(self, plain: str) -> None:
+        self.password = bcrypt.generate_password_hash(plain).decode("utf-8")
+
+    def check_password(self, plain: str) -> bool:
+        return bcrypt.check_password_hash(self.password, plain)
+
+    def __repr__(self) -> str:
+        return f"<User {self.username}>"

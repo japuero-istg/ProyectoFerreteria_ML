@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Regresión Predictiva - ISTG{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold text-dark mb-1" style="color: #002855 !important;">
+                <i class="bi bi-cpu-fill me-2"></i>{{ nombre_modulo }}
+            </h2>
+            <p class="text-muted mb-0">Fase 4 - Hito 1: Optimización de Hiperparámetros, Evaluación de Residuos e Inferencia Interactiva en Modelos de Regresión.</p>
+        </div>
+        <div class="text-end">
+            <span class="badge p-2 uppercase fw-bold" style="background-color: #002855 !important; color: white;">Suite de Regresión</span>
+        </div>
+    </div>
+
+    <div class="btn-group mb-4 shadow-sm flex-wrap w-100 w-md-auto">
+        <a href="{{ url_for('prediction.dashboard', modulo_id=1) }}" 
+           class="btn {% if modulo_id == 1 %}btn-dark bg-dark text-white{% else %}btn-outline-dark text-dark{% endif %} fw-bold px-3 py-2">
+            <i class="bi bi-cart3 me-2"></i>Módulo 1: Transaccional (Unidades)
+        </a>
+        <a href="{{ url_for('prediction.dashboard', modulo_id=2) }}" 
+           class="btn {% if modulo_id == 2 %}btn-dark bg-dark text-white{% else %}btn-outline-dark text-dark{% endif %} fw-bold px-3 py-2">
+            <i class="bi bi-calendar3 me-2"></i>Módulo 2: Demanda Semanal (Cajas)
+        </a>
+        <a href="{{ url_for('prediction.dashboard', modulo_id=5) }}" 
+           class="btn {% if modulo_id == 5 %}btn-dark bg-dark text-white{% else %}btn-outline-dark text-dark{% endif %} fw-bold px-3 py-2">
+            <i class="bi bi-cash-coin me-2"></i>Módulo 5: Rentabilidad (Margen Unitario)
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5 col-md-12">
+            
+            <div class="card border-0 shadow-sm p-4 bg-white mb-4">
+                <h5 class="fw-bold mb-3 d-flex align-items-center" style="color: #002855;">
+                    <i class="bi bi-sliders me-2 text-primary"></i>Configuración de Hiperparámetros
+                </h5>
+                <p class="text-muted small">Seleccione el regresor de Scikit-Learn para calibrar y entrenar el artefacto predictor en este módulo.</p>
+				
+				<form action="{{ url_for('prediction.entrenar_modelo', modulo_id=modulo_id) }}" method="POST" class="row g-3 align-items-end">
+					<div class="col-md-4">
+						<label for="algoritmoSelect" class="form-label fw-bold text-secondary small text-uppercase">Algoritmo Predictor</label>
+						<select name="algoritmo" id="algoritmoSelect" class="form-select border-2">
+							<option value="LinearRegression" {% if metricas and metricas.algoritmo == 'LinearRegression' %}selected{% endif %}>Regresión Lineal Múltiple</option>
+							<option value="RandomForestRegressor" {% if metricas and metricas.algoritmo == 'RandomForestRegressor' %}selected{% endif %}>Random Forest Regressor</option>
+							<option value="GradientBoostingRegressor" {% if metricas and metricas.algoritmo == 'GradientBoostingRegressor' %}selected{% endif %}>Gradient Boosting Regressor</option>
+						</select>
+					</div>
+
+					<div class="col-md-4" id="testSizeBlock">
+						<label for="testSizeSelect" class="form-label fw-bold text-secondary small text-uppercase">Datos de Prueba (Split)</label>
+						<select name="test_size" id="testSizeSelect" class="form-select border-2">
+							<option value="0.15">15% Validación / 85% Entrenamiento</option>
+							<option value="0.20" selected>20% Validación / 80% Entrenamiento</option>
+							<option value="0.25">25% Validación / 75% Entrenamiento</option>
+							<option value="0.30">30% Validación / 70% Entrenamiento</option>
+						</select>
+					</div>
+
+					<div class="col-md-4" id="estimatorsBlock" style="display: none;">
+						<label for="n_estimators" class="form-label fw-bold text-secondary small text-uppercase">N° Estimadores (Árboles)</label>
+						<input type="number" name="n_estimators" id="n_estimators" class="form-control border-2" value="100" min="10" max="500">
+					</div>
+
+					<div class="col-md-12 text-end mt-3">
+						<button type="submit" class="btn btn-primary fw-bold text-uppercase px-4 py-2 border-0 shadow-sm" style="background-color: #002855 !important;">
+							<i class="bi bi-play-fill me-1"></i> Entrenar Modelo
+						</button>
+					</div>
+				
+				</form>
+				
+                    <div class="mb-3">
+                        <label for="algoritmoSelect" class="form-label fw-bold small text-secondary">Algoritmo Predictor:</label>
+                        <select name="algoritmo" id="algoritmoSelect" class="form-select border-2">
+                            <option value="LinearRegression" {% if metricas and metricas.algoritmo == 'LinearRegression' %}selected{% endif %}>Regresión Lineal Múltiple</option>
+                            <option value="RandomForest" {% if metricas and metricas.algoritmo == 'RandomForest' %}selected{% endif %}>Random Forest Regressor</option>
+                            <option value="GradientBoosting" {% if metricas and metricas.algoritmo == 'GradientBoosting' %}selected{% endif %}>Gradient Boosting Regressor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4" id="estimatorsBlock" style="display: none;">
+                        <label class="form-label fw-bold small text-secondary">Número de Estimadores (Árboles de Decisión):</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-tree-fill text-success"></i></span>
+                            <input type="number" name="n_estimators" class="form-control" value="100" min="10" max="500">
+                        </div>
+                        <div class="form-text text-muted x-small">Valores sugeridos por el ISTG: entre 50 y 200 árboles para evitar sobreajuste en el dataset.</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2" style="background-color: #002855; border: none;">
+                        <i class="bi bi-play-circle-fill me-2"></i>Ejecutar Pipeline y Serializar (.pkl)
+                    </button>
+                </form>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 bg-white">
+                <h5 class="fw-bold mb-3 d-flex align-items-center" style="color: #002855;">
+                    <i class="bi bi-graph-up me-2 text-success"></i>Métricas de Validación Cruzada ({% if metricas %}{{ metricas.algoritmo }}{% else %}Sin Modelo{% endif %})
+                </h5>
+                <p class="text-muted small">Indicadores estandarizados evaluados matemáticamente sobre el vector de pruebas independiente (Test Split del 20%).</p>
+  %%%%%%              
+				{% if metricas %}
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="p-3 rounded text-center border bg-light shadow-sm">
+                                <span class="text-muted d-block small fw-bold">Coeficiente R²</span>
+                                <span class="fs-3 fw-bold text-primary">{{ metricas.r2 }}</span>
+                                <div class="x-small text-muted mt-1">Precisión Global</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded text-center border bg-light shadow-sm">
+                                <span class="text-muted d-block small fw-bold">Raíz MSE (RMSE)</span>
+                                <span class="fs-3 fw-bold text-danger">{{ metricas.rmse }}</span>
+                                <div class="x-small text-muted mt-1">Desviación Típica</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded text-center border bg-light shadow-sm">
+                                <span class="text-muted d-block small fw-bold">Error Medio (MAE)</span>
+                                <span class="fs-3 fw-bold text-dark">{{ metricas.mae }}</span>
+                                <div class="x-small text-muted mt-1">Magnitud de Error</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded text-center border bg-light shadow-sm d-flex flex-column justify-content-center align-items-center">
+                                <span class="text-muted d-block small fw-bold">Estimador Activo</span>
+                                <span class="badge bg-success px-2 py-1 text-truncate w-100 mt-2 fs-6 fw-bold" style="max-width: 130px;">
+                                    {{ metricas.algoritmo }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if modulo_id == 1 %}
+                        <div class="col-12">
+                            <div class="p-3 rounded text-center border border-warning bg-white shadow-sm">
+                                <span class="text-warning d-block small fw-bold">Error Absoluto Porcentual Medio (MAPE)</span>
+                                <span class="fs-3 fw-bold text-warning">
+                                    {% if metricas.mape is not none %}{{ metricas.mape }}%{% else %}N/A{% endif %}
+                                </span>
+                                <div class="x-small text-muted mt-1">Métrica reglamentaria de desviación porcentual</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if modulo_id == 2 and metricas.cv_r2_promedio is not none %}
+                        <div class="col-12">
+                            <div class="p-3 rounded border border-info bg-white shadow-sm">
+                                <span class="text-info d-block small fw-bold mb-1"><i class="bi bi-shield-check me-1"></i>K-Fold R² Promedio (5 pliegues)</span>
+                                <span class="fs-4 fw-bold text-info font-monospace">{{ metricas.cv_r2_promedio }}</span>
+                                <div class="d-flex gap-1 flex-wrap mt-2">
+                                    {% for fold in metricas.cv_r2_folds %}
+                                        <span class="badge bg-light text-dark border font-monospace" style="font-size: 0.65rem;">Pliegue {{ loop.index }}: {{ fold }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-3 bg-light p-2 rounded border">
+                        <span class="fw-bold text-secondary d-block small mb-1"><i class="bi bi-tags-fill me-1 text-primary"></i>Variables de Entrada Modeladas:</span>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for feat in metricas.features_utilizadas %}
+                                <span class="badge bg-secondary font-monospace" style="font-size: 0.7rem;">{{ feat }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+  #######					
+                {% else %}
+                    <div class="text-center py-5 border rounded bg-light text-muted">
+                        <i class="bi bi-clipboard-x display-5 d-block mb-2 text-secondary"></i>
+                        <h6 class="fw-bold mb-1">Sin Métricas en Memoria</h6>
+                        <p class="small text-muted px-3 mb-0">Haga clic en 'Ejecutar Pipeline' arriba para desplegar la evaluación del docente.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-7 col-md-12">
+            
+            <div class="card border-0 shadow-sm p-4 bg-white mb-4 text-center">
+                <h5 class="fw-bold text-start mb-3 d-flex align-items-center" style="color: #002855;">
+                    <i class="bi bi-bezier2 me-2 text-danger"></i>Gráfico Analítico de Residuos - {% if metricas %}{{ metricas.algoritmo }}{% else %}Sin Modelo{% endif %}
+                </h5>
+                <p class="text-muted text-start small">Requerimiento de Cátedra: Inspección visual de la distribución del error sobre la línea base (cero) para verificar la homocedasticidad del estimador.</p>
+                
+                {% if metricas and metricas.grafico_residuos %}
+                    <div class="p-2 border rounded bg-light shadow-inner">
+                        <img src="{{ metricas.grafico_residuos }}" class="img-fluid rounded border shadow-sm bg-white" alt="Gráfico Analítico de Residuos ISTG">
+                    </div>
+                {% else %}
+                    <div class="py-5 bg-light rounded border text-muted border-dashed">
+                        <i class="bi bi-image-alt display-4 d-block mb-2 text-secondary"></i>
+                        <span class="small">El gráfico dinámico en Base64 se pintará aquí al finalizar el entrenamiento del pipeline.</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 bg-white">
+                <h5 class="fw-bold mb-2 d-flex align-items-center" style="color: #002855;">
+                    <i class="bi bi-calculator me-2 text-warning"></i>Simulador de Inferencia Interactiva (.pkl)
+                </h5>
+                <p class="text-muted small mb-3">Ingrese valores manuales en el vector de características para evaluar la inferencia predictiva directa ejecutada sobre el archivo binario.</p>
+                
+                <form id="simulationForm" onsubmit="ejecutarInferencia(event)">
+                    <div class="row g-2">
+                        <div class="col-md-4 col-6 bg-light p-2 rounded border mb-2 shadow-sm">
+                            <label class="form-label small fw-bold text-dark"><i class="bi bi-currency-dollar text-success me-1"></i>Precio Unitario ($)</label>
+                            <input type="number" step="0.01" id="input_precio_unidad" class="form-control form-control-sm border-2 border-success" value="4.50" oninput="recalcularMargenSimulado()">
+                        </div>
+                        <div class="col-md-4 col-6 bg-light p-2 rounded border mb-2 shadow-sm">
+                            <label class="form-label small fw-bold text-dark"><i class="bi bi-tag-fill text-danger me-1"></i>Costo Unitario ($)</label>
+                            <input type="number" step="0.01" id="input_costo_unidad" class="form-control form-control-sm border-2" value="2.10" oninput="recalcularMargenSimulado()">
+                        </div>
+                        <div class="col-md-4 col-12 bg-light p-2 rounded border mb-2 shadow-sm">
+                            <label class="form-label small fw-bold text-secondary">Margen Unitario ($)</label>
+                            <input type="number" step="0.01" id="input_margen_unitario" class="form-control form-control-sm bg-white border-2" value="2.40" readonly>
+                        </div>
+
+                        {% if modulo_id == 1 %}
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Año Comercial</label>
+                                <input type="number" id="input_año" class="form-control form-control-sm border-2" value="2026">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Semana ISO (1-53)</label>
+                                <input type="number" id="input_semana_iso" class="form-control form-control-sm border-2" value="26" min="1" max="53">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Día Semana (1-7)</label>
+                                <input type="number" id="input_dia_semana" class="form-control form-control-sm border-2" value="3" min="1" max="7">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">ID Tienda Matriz</label>
+                                <input type="number" id="input_tienda_id" class="form-control form-control-sm border-2" value="1">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Factor Tamaño (1-5)</label>
+                                <input type="number" id="input_factor_tamano" class="form-control form-control-sm border-2" value="3" min="1" max="5">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Antigüedad (Años)</label>
+                                <input type="number" id="input_antiguedad_tienda" class="form-control form-control-sm border-2" value="12">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary">Densidad Poblacional Encuesta</label>
+                                <input type="number" id="input_densidad_poblacional_zona_enc" class="form-control form-control-sm border-2" value="4500">
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">¿Es Feriado?</label>
+                                <select id="input_es_feriado" class="form-select form-select-sm border-2">
+                                    <option value="0">No (Día Regular)</option>
+                                    <option value="1">Sí (Feriado Nacional)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">¿Promoción Activa?</label>
+                                <select id="input_promocion_activa" class="form-select form-select-sm border-2">
+                                    <option value="0">No Aplicada</option>
+                                    <option value="1">Sí (Campaña Activa)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">Región Geográfica (One-Hot)</label>
+                                <select id="region_seleccionada" class="form-select form-select-sm border-2">
+                                    <option value="Costa">Costa (Guayas/Manabí)</option>
+                                    <option value="Sierra">Sierra (Pichincha/Azuay)</option>
+                                    <option value="Oriente">Oriente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">Tipo de Cliente (One-Hot)</label>
+                                <select id="cliente_seleccionado" class="form-select form-select-sm border-2">
+                                    <option value="Regular">Regular / Consumidor Final</option>
+                                    <option value="Corporativo">Corporativo / Constructoras</option>
+                                    <option value="Mayorista">Mayorista / Distribuidores</option>
+                                </select>
+                            </div>
+
+                        {% elif modulo_id == 2 %}
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">ID Tienda Matriz</label>
+                                <input type="number" id="input_tienda_id" class="form-control form-control-sm border-2" value="1">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Factor Tamaño (1-5)</label>
+                                <input type="number" id="input_factor_tamano" class="form-control form-control-sm border-2" value="3" min="1" max="5">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Antigüedad (Años)</label>
+                                <input type="number" id="input_antiguedad_tienda" class="form-control form-control-sm border-2" value="12">
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <label class="form-label small fw-bold text-secondary">Densidad Poblacional</label>
+                                <input type="number" id="input_densidad_poblacional_zona_enc" class="form-control form-control-sm border-2" value="4500">
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <label class="form-label small fw-bold text-secondary">Año Comercial</label>
+                                <input type="number" id="input_año" class="form-control form-control-sm border-2" value="2026">
+                            </div>
+                            <div class="col-md-4 col-12">
+                                <label class="form-label small fw-bold text-secondary">Semana ISO (1-53)</label>
+                                <input type="number" id="input_semana_iso" class="form-control form-control-sm border-2" value="26" min="1" max="53">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Semana Cíclica (Seno)</label>
+                                <input type="number" step="0.0001" id="input_semana_sin" class="form-control form-control-sm border-2" value="0.0120">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Semana Cíclica (Coseno)</label>
+                                <input type="number" step="0.0001" id="input_semana_cos" class="form-control form-control-sm border-2" value="-0.9999">
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <label class="form-label small fw-bold text-secondary">Demanda t-1 (Lag 1)</label>
+                                <input type="number" id="input_demanda_lag_1" class="form-control form-control-sm border-2" value="150">
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <label class="form-label small fw-bold text-secondary">Demanda t-2 (Lag 2)</label>
+                                <input type="number" id="input_demanda_lag_2" class="form-control form-control-sm border-2" value="142">
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">Total Venta Semanal ($)</label>
+                                <input type="number" step="0.01" id="input_total_ingresos_semanal" class="form-control form-control-sm border-2" value="34500.00">
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">Precio Mediano Semanal ($)</label>
+                                <input type="number" step="0.01" id="input_precio_mediano" class="form-control form-control-sm border-2" value="18.75">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-secondary">Promedio Margen Unitario ($)</label>
+                                <input type="number" step="0.01" id="input_promedio_margen_unitario" class="form-control form-control-sm border-2" value="4.80">
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <label class="form-label small fw-bold text-secondary">Días con Promoción (0-7)</label>
+                                <input type="number" id="input_dias_con_promocion" class="form-control form-control-sm border-2" value="2" min="0" max="7">
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <label class="form-label small fw-bold text-secondary">Días con Feriado (0-7)</label>
+                                <input type="number" id="input_dias_con_feriado" class="form-control form-control-sm border-2" value="0" min="0" max="7">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary">Región de la Tienda (One-Hot)</label>
+                                <select id="region_seleccionada" class="form-select form-select-sm border-2">
+                                    <option value="Costa">Costa (Guayas/Manabí)</option>
+                                    <option value="Sierra">Sierra (Pichincha/Azuay)</option>
+                                    <option value="Oriente">Oriente</option>
+                                </select>
+                            </div>
+
+                        {% elif modulo_id == 5 %}
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Año Comercial</label>
+                                <input type="number" id="input_año" class="form-control form-control-sm border-2" value="2026">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Semana ISO (1-53)</label>
+                                <input type="number" id="input_semana_iso" class="form-control form-control-sm border-2" value="26" min="1" max="53">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Día Semana (1-7)</label>
+                                <input type="number" id="input_dia_semana" class="form-control form-control-sm border-2" value="3" min="1" max="7">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">ID Tienda Matriz</label>
+                                <input type="number" id="input_tienda_id" class="form-control form-control-sm border-2" value="1">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Factor Tamaño (1-5)</label>
+                                <input type="number" id="input_factor_tamano" class="form-control form-control-sm border-2" value="3" min="1" max="5">
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="form-label small fw-bold text-secondary">Antigüedad (Años)</label>
+                                <input type="number" id="input_antiguedad_tienda" class="form-control form-control-sm border-2" value="12">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-secondary">Densidad Poblacional Zona</label>
+                                <input type="number" id="input_densidad_poblacional_zona_enc" class="form-control form-control-sm border-2" value="4500">
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">¿Es Feriado?</label>
+                                <select id="input_es_feriado" class="form-select form-select-sm border-2">
+                                    <option value="0">No (Día Laborable Regular)</option>
+                                    <option value="1">Sí (Feriado Nacional)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">¿Promoción Activa?</label>
+                                <select id="input_promocion_activa" class="form-select form-select-sm border-2">
+                                    <option value="0">No Aplicada</option>
+                                    <option value="1">Sí (Descuento/Campaña Viva)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">Región Geográfica (One-Hot)</label>
+                                <select id="region_seleccionada" class="form-select form-select-sm border-2">
+                                    <option value="Costa">Costa (Guayas/Manabí)</option>
+                                    <option value="Sierra">Sierra (Pichincha/Azuay)</option>
+                                    <option value="Oriente">Oriente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <label class="form-label small fw-bold text-secondary">Perfil de Cliente (One-Hot)</label>
+                                <select id="cliente_seleccionado" class="form-select form-select-sm border-2">
+                                    <option value="Regular">Regular / Consumidor Final</option>
+                                    <option value="Corporativo">Corporativo / Constructoras</option>
+                                    <option value="Mayorista">Mayorista / Distribuidores</option>
+                                </select>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100 fw-bold mt-4 shadow-sm" {% if not metricas %}disabled{% endif %}>
+                        <i class="bi bi-lightning-charge-fill me-1"></i>Calcular Inferencia Inmediata
+                    </button>
+                </form>
+                
+                <div id="resultadoSimulacion" class="mt-3 alert text-center fw-bold border-0 shadow-sm p-2" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Control visual dinámico para el selector de algoritmos
+    document.getElementById('algoritmoSelect').addEventListener('change', function() {
+        const block = document.getElementById('estimatorsBlock');
+        block.style.display = (this.value === 'LinearRegression') ? 'none' : 'block';
+    });
+    
+    if (document.getElementById('algoritmoSelect').value !== 'LinearRegression') {
+        document.getElementById('estimatorsBlock').style.display = 'block';
+    }
+
+    // Función en tiempo real para mantener la sincronización y coherencia del vector numérico
+    function recalcularMargenSimulado() {
+        const precio = parseFloat(document.getElementById('input_precio_unidad').value) || 0;
+        const costo = parseFloat(document.getElementById('input_costo_unidad').value) || 0;
+        document.getElementById('input_margen_unitario').value = (precio - costo).toFixed(2);
+    }
+
+    // Consumo asíncrono corregido para entornos Cloudflare / HTTPS
+    async function ejecutarInferencia(e) {
+        e.preventDefault();
+        const resBox = document.getElementById('resultadoSimulacion');
+        resBox.style.display = 'block';
+        resBox.className = "alert alert-warning text-center fw-bold p-2 mb-0";
+        resBox.innerText = "⏳ Computando inferencia matricial sobre el archivo .pkl...";
+        
+        const payload = {};
+        
+        // Mapear y parsear los inputs a tipos numéricos puros (Int/Float) para evitar caídas en NumPy
+        const inputs = document.querySelectorAll('#simulationForm input, #simulationForm select');
+        inputs.forEach(input => {
+            if(input.id && input.id.startsWith('input_')) {
+                const key = input.id.replace('input_', '');
+                const val = input.value;
+                if (input.type === 'number' || input.tagName === 'SELECT') {
+                    payload[key] = val.includes('.') ? parseFloat(val) : parseInt(val, 10);
+                } else {
+                    payload[key] = val;
+                }
+            }
+        });
+        
+        const regSelect = document.getElementById('region_seleccionada');
+        if (regSelect) payload['region_seleccionada'] = regSelect.value;
+        
+        const cliSelect = document.getElementById('cliente_seleccionado');
+        if (cliSelect) payload['cliente_seleccionado'] = cliSelect.value;
+
+        try {
+            const response = await fetch("{{ url_for('prediction.simular_prediccion', modulo_id=modulo_id) }}", {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                resBox.className = "alert alert-danger text-center small p-2 mb-0";
+                resBox.innerHTML = "⚠️ <strong>Error de Enrutamiento:</strong> El backend no devolvió JSON. Revisa que el endpoint 'simular_prediccion' esté bien registrado.";
+                return;
+            }
+
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                resBox.className = "alert alert-success text-center fw-bold border-0 shadow-sm p-3 fs-5 mb-0";
+                
+                let sufijoUnidad = "";
+                {% if modulo_id == 1 %}
+                    sufijoUnidad = "Unidades / Transacción";
+                {% elif modulo_id == 2 %}
+                    sufijoUnidad = "Cajas Demandadas / Semana";
+                {% else %}
+                    sufijoUnidad = "USD ($) Margen Neto Unitario";
+                {% endif %}
+                
+                resBox.innerHTML = `
+                    <i class="bi bi-check-circle-fill me-2"></i>Predicción Inmediata: 
+                    <span class="badge bg-dark px-3 py-2 font-monospace">${data.resultado}</span> ${sufijoUnidad}
+                `;
+            } else {
+                resBox.className = "alert alert-danger text-center small p-2 mb-0";
+                resBox.innerText = "❌ " + data.message;
+            }
+        } catch (err) {
+            resBox.className = "alert alert-danger text-center small p-2 mb-0";
+            resBox.innerText = "❌ Error crítico de comunicación con el contenedor Flask.";
+        }
+    }
+
+    // ─── LÓGICA AGREGADA: MITIGACIÓN DE DESYNC EN EL FRONTEND ───
+    document.addEventListener("DOMContentLoaded", function() {
+        const selectAlgoritmo = document.getElementById("algoritmo");
+        // Seleccionamos la fila de métricas buscando la clase 'row' que está justo debajo del bloque 1
+        const rowMetricas = document.querySelector('.row'); 
+        
+        if (selectAlgoritmo && rowMetricas) {
+            // Capturamos el algoritmo original que el backend dejó seleccionado en el HTML
+            const algoritmoRealFisico = selectAlgoritmo.value;
+
+            selectAlgoritmo.addEventListener("change", function() {
+                // Evaluamos si el operador cambió el select a un algoritmo que no ha sido entrenado aún
+                if (this.value !== algoritmoRealFisico) {
+                    // Atenuamos visualmente el panel de métricas y gráficos para indicar desactualización
+                    rowMetricas.style.transition = "opacity 0.25s ease";
+                    rowMetricas.style.opacity = "0.35";
+                    console.log("⚠️ [UI WARNING] Estimador desalineado con las métricas en caché. Requiere presionar 'Entrenar Modelo'.");
+                } else {
+                    // Si el operador regresa a la opción original que sí está entrenada, restauramos la opacidad total
+                    rowMetricas.style.opacity = "1";
+                }
+            });
+        }
+    });
+
+</script>
+
+<style>
+    /* Clases estéticas complementarias para el alineamiento visual del ISTG */
+    .border-dashed { border-style: dashed !important; border-width: 2px !important; }
+    .x-small { font-size: 0.75rem; }
+    .font-monospace { font-family: monospace !important; }
+    .shadow-inner { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const algoritmoSelect = document.getElementById('algoritmoSelect');
+        const estimatorsBlock = document.getElementById('estimatorsBlock');
+
+        if (algoritmoSelect && estimatorsBlock) {
+            function ajustarCamposDinamicos() {
+                const seleccion = algoritmoSelect.value;
+                // Si es Regresión Lineal, ocultamos la caja de árboles. Si es RandomForest o GradientBoosting, la mostramos.
+                if (seleccion === 'LinearRegression') {
+                    estimatorsBlock.style.display = 'none';
+                } else {
+                    estimatorsBlock.style.display = 'block';
+                }
+            }
+
+            // Escuchar cambios del operador en tiempo real
+            algoritmoSelect.addEventListener('change', ajustarCamposDinamicos);
+            
+            // Evaluar inmediatamente al cargar la pantalla
+            ajustarCamposDinamicos();
+        }
+    });
+</script>
+
+{% endblock %}
+

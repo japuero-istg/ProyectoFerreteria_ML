@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{% block title %}Módulo 3: Categoría de Producto - ISTG{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Encabezado (mismo patrón que M1/2/5 — ver transaccional.html/demanda.html/margen.html.
+         Color: naranja Home Depot (text-primary/bg-primary, ya redirigidos en base.html),
+         no el azul #002855 hardcodeado que aún usan M1/2/5 — pendiente de migrar allá también. -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1 text-primary">
+                <i class="bi bi-diagram-3 me-2"></i>Módulo 3: Categoría de Producto
+            </h2>
+            <p class="text-muted mb-0">Fase 4 · Clasificación Multiclase (Combinación #3). Predicción de <code>categoria_id</code> (6 clases).</p>
+        </div>
+        <span class="badge p-2 fw-bold bg-primary text-white">Suite de Clasificación</span>
+    </div>
+
+    <!-- Nota: no se incluyen "pestañas de módulo" (btn-group) como en la Suite de
+         Regresión — esa suite tiene 3 módulos hermanos (M1/M2/M5) entre los que
+         navegar; esta Suite de Clasificación quedó con un solo módulo tras el
+         retiro del Módulo 6 (ver definicion_proyecto_HD_v9.md, Corrección 12).
+         Un selector de 1 solo ítem no aporta nada al usuario. Si se agrega un
+         nuevo módulo de clasificación a futuro, restaurar el patrón de pestañas. -->
+
+    <!-- ═══ FILA 1: Formulario de entrenamiento ═══ -->
+    <div class="card border-0 shadow-sm p-4 mb-4">
+        <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-sliders me-2"></i>Configuración y Entrenamiento</h5>
+        <form id="formEntrenamiento" action="{{ url_for('classification.entrenar_modelo', modulo_id=modulo_id) }}" method="POST">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-secondary small text-uppercase">Algoritmo</label>
+                    <select name="algoritmo" id="algoritmoSelect" class="form-select border-2">
+                        {% for alg in algoritmos_validos %}
+                        <option value="{{ alg }}">{{ alg }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-secondary small text-uppercase">Split de Prueba</label>
+                    <select name="test_size" class="form-select border-2">
+                        <option value="0.15">15% Validación</option>
+                        <option value="0.20" selected>20% Validación</option>
+                        <option value="0.25">25% Validación</option>
+                        <option value="0.30">30% Validación</option>
+                    </select>
+                </div>
+                <div class="col-md-3" id="estimatorsBlock">
+                    <label class="form-label fw-bold text-secondary small text-uppercase">N° Estimadores</label>
+                    <input type="number" name="n_estimators" class="form-control border-2" value="100" min="10" max="500">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" id="btnEntrenar" class="btn btn-primary w-100 fw-bold py-2">
+                        <span id="btnEntrenarLabel"><i class="bi bi-play-circle-fill me-1"></i>Entrenar</span>
+                        <span id="btnEntrenarSpinner" style="display:none;">
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>Entrenando…
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- ═══ FILA 2: Tabla comparativa de algoritmos entrenados ═══ -->
+    <div class="card border-0 shadow-sm p-4 mb-4">
+        <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-table me-2 text-success"></i>Comparativa de Algoritmos Entrenados</h5>
+        {% if todas_metricas or algoritmos_en_progreso %}
+        <script id="datosGraficasJSON" type="application/json">{{ todas_metricas | tojson }}</script>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-muted small text-uppercase">
+                    <tr>
+                        <th class="py-3 px-3">Algoritmo</th>
+                        <th class="py-3 text-center">Accuracy</th>
+                        <th class="py-3 text-center">Precisión (macro)</th>
+                        <th class="py-3 text-center">Recall (macro)</th>
+                        <th class="py-3 text-center">F1 (macro)</th>
+                        <th class="py-3 text-center">AUC-ROC (macro OvR)</th>
+                        <th class="py-3 text-center">CV F1 (5-fold)</th>
+                        <th class="py-3 text-center">Muestras</th>
+                        <th class="py-3 text-center">Split</th>
+                        <th class="py-3 text-center">Ver Gráficas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alg, m in todas_metricas.items() %}
+                    <tr>
+                        <td class="px-3 fw-bold">
+                            <code>{{ alg }}</code>
+                            {% if alg in algoritmos_en_progreso %}
+                            <span class="badge bg-info text-dark ms-1"><span class="spinner-border spinner-border-sm" style="width:0.7rem;height:0.7rem;"></span> Reentrenando…</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center"><span class="badge {% if m.accuracy >= 0.70 %}bg-success{% elif m.accuracy >= 0.40 %}bg-warning text-dark{% else %}bg-danger{% endif %} px-2">{{ "%.2f"|format(m.accuracy * 100) }}%</span></td>
+                        <td class="text-center">{{ "%.2f"|format(m.precision_macro * 100) }}%</td>
+                        <td class="text-center">{{ "%.2f"|format(m.recall_macro * 100) }}%</td>
+                        <td class="text-center fw-bold">{{ "%.2f"|format(m.f1_macro * 100) }}%</td>
+                        <td class="text-center">
+                            {% if m.auc_roc_macro_ovr is not none %}
+                                <span class="badge {% if m.auc_roc_macro_ovr >= 0.85 %}bg-success{% elif m.auc_roc_macro_ovr >= 0.65 %}bg-warning text-dark{% else %}bg-danger{% endif %} px-2">{{ m.auc_roc_macro_ovr }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-center text-secondary">{{ m.cv_f1_macro_promedio if m.cv_f1_macro_promedio is not none else "—" }}</td>
+                        <td class="text-center text-muted">{{ m.samples_entrenamiento }}</td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">{{ (m.test_size_utilizado * 100)|int }}%</span></td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary fw-bold px-2 py-1"
+                                    data-ver-alg="{{ alg }}"
+                                    onclick="mostrarGraficas('{{ alg }}')"
+                                    title="Ver gráficas de {{ alg }}">
+                                <i class="bi bi-bar-chart-fill me-1"></i>Ver
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% for alg in algoritmos_en_progreso %}
+                    {% if alg not in todas_metricas %}
+                    <tr class="table-info">
+                        <td class="px-3 fw-bold"><code>{{ alg }}</code></td>
+                        <td colspan="8" class="text-center text-dark">
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            Entrenando en segundo plano — esta página se actualiza sola al terminar…
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 border rounded bg-light text-muted">
+            <i class="bi bi-clipboard-x display-5 d-block mb-2 text-secondary"></i>
+            <h6 class="fw-bold mb-1">Ningún algoritmo entrenado aún</h6>
+            <p class="small mb-0">Seleccione un algoritmo arriba y ejecute el pipeline para ver métricas aquí.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══ FILA 3: Matriz de Confusión del último algoritmo entrenado ═══ -->
+    {% set ultimo_alg = todas_metricas.keys()|list|last if todas_metricas else None %}
+    {% set ultimo_m   = todas_metricas[ultimo_alg] if ultimo_alg else None %}
+    <div class="card border-0 shadow-sm p-4 mb-4">
+        <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-grid-3x3 me-2 text-danger"></i>Matriz de Confusión</h5>
+        <p class="text-muted small mb-3">
+            {% if ultimo_alg %}Mostrando la matriz del último entrenamiento: <code id="lblAlgGraficos">{{ ultimo_alg }}</code>. Use <strong>Ver</strong> en la tabla para cambiar.{% else %}Se pintará aquí al finalizar el primer entrenamiento.{% endif %}
+        </p>
+        <div id="contenedorMatrizConfusion" class="mx-auto" style="max-width:900px; width:100%;">
+            {% if ultimo_m and ultimo_m.grafico_matriz_confusion %}
+                <div class="p-2 border rounded bg-light">
+                    <img id="imgMatrizConfusion" src="{{ ultimo_m.grafico_matriz_confusion }}" class="img-fluid rounded border d-block mx-auto" alt="Matriz de Confusión">
+                </div>
+            {% else %}
+                <div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;">
+                    <i class="bi bi-image-alt display-4 d-block mb-2 text-secondary"></i>
+                    <span class="small">El gráfico aparecerá aquí tras el primer entrenamiento.</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══ FILA 4: Curva ROC + Curvas de Aprendizaje ═══ -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <h5 class="fw-bold mb-1 text-primary">
+                    <i class="bi bi-graph-up-arrow me-2 text-primary"></i>Curva ROC (One-vs-Rest)
+                </h5>
+                <p class="text-muted small mb-3">
+                    {% if ultimo_alg %}Una curva por clase + AUC individual, con AUC macro-promedio destacado (<code>{{ ultimo_alg }}</code>).{% else %}Aparecerá tras el primer entrenamiento.{% endif %}
+                </p>
+                <div id="contenedorCurvaROC">
+                {% if ultimo_m and ultimo_m.grafico_curva_roc %}
+                    <div class="p-2 border rounded bg-light">
+                        <img src="{{ ultimo_m.grafico_curva_roc }}" class="img-fluid rounded border" alt="Curva ROC">
+                    </div>
+                {% else %}
+                    <div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;">
+                        <i class="bi bi-graph-up-arrow display-4 d-block mb-2 text-secondary"></i>
+                        <span class="small">Sin gráfico todavía.</span>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <h5 class="fw-bold mb-1 text-primary">
+                    <i class="bi bi-graph-up me-2 text-secondary"></i>Curvas de Aprendizaje
+                </h5>
+                <p class="text-muted small mb-3">
+                    {% if ultimo_alg %}Score F1-macro de entrenamiento vs. validación por tamaño de muestra —
+                    diagnóstico de over/underfitting (<code>{{ ultimo_alg }}</code>).{% else %}Aparecerá tras el primer entrenamiento.{% endif %}
+                </p>
+                <div id="contenedorCurvaAprendizaje">
+                {% if ultimo_m and ultimo_m.grafico_curva_aprendizaje %}
+                    <div class="p-2 border rounded bg-light">
+                        <img src="{{ ultimo_m.grafico_curva_aprendizaje }}" class="img-fluid rounded border" alt="Curvas de Aprendizaje">
+                    </div>
+                {% else %}
+                    <div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;">
+                        <i class="bi bi-graph-up display-4 d-block mb-2 text-secondary"></i>
+                        <span class="small">Sin gráfico todavía.</span>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ FILA 4.5: Árbol de Decisión + Reporte por Clase ═══ -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <h5 class="fw-bold mb-1 text-primary">
+                    <i class="bi bi-diagram-2 me-2 text-info"></i>Árbol de Decisión
+                </h5>
+                <p class="text-muted small mb-3">
+                    Solo disponible cuando el algoritmo es <code>DecisionTreeClassifier</code> — SVG vectorial (Graphviz), profundidad de visualización limitada a 4 niveles por legibilidad.
+                </p>
+                <div id="contenedorArbolDecision">
+                {% if ultimo_m and ultimo_m.grafico_arbol_decision %}
+                    <div class="p-2 border rounded bg-light">
+                        <img src="{{ ultimo_m.grafico_arbol_decision }}" class="img-fluid rounded border" alt="Árbol de Decisión">
+                    </div>
+                {% else %}
+                    <div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;">
+                        <i class="bi bi-diagram-2 display-4 d-block mb-2 text-secondary"></i>
+                        <span class="small">Sin árbol disponible para este algoritmo.</span>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <h5 class="fw-bold mb-1 text-primary">
+                    <i class="bi bi-list-check me-2 text-warning"></i>Reporte por Clase
+                </h5>
+                <p class="text-muted small mb-3">
+                    {% if ultimo_alg %}Precision/Recall/F1 individuales por categoría (<code>{{ ultimo_alg }}</code>).{% else %}Aparecerá tras el primer entrenamiento.{% endif %}
+                </p>
+                <div id="contenedorReporteClase" class="table-responsive">
+                {% if ultimo_m and ultimo_m.reporte_por_clase %}
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light small"><tr><th>Clase</th><th>Precision</th><th>Recall</th><th>F1</th><th>Soporte</th></tr></thead>
+                        <tbody id="tbodyReporteClase">
+                            {% for clase in ultimo_m.clases %}
+                            {% if ultimo_m.reporte_por_clase.get(clase) %}
+                            <tr>
+                                <td>{{ clase }}</td>
+                                <td>{{ "%.2f"|format(ultimo_m.reporte_por_clase[clase]['precision'] * 100) }}%</td>
+                                <td>{{ "%.2f"|format(ultimo_m.reporte_por_clase[clase]['recall'] * 100) }}%</td>
+                                <td>{{ "%.2f"|format(ultimo_m.reporte_por_clase[clase]['f1-score'] * 100) }}%</td>
+                                <td>{{ ultimo_m.reporte_por_clase[clase]['support']|int }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;">
+                        <i class="bi bi-list-check display-4 d-block mb-2 text-secondary"></i>
+                        <span class="small">Sin reporte todavía.</span>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ FILA 5: Simulador de inferencia ═══ -->
+    <div class="card border-0 shadow-sm p-4">
+        <h5 class="fw-bold mb-1 text-primary"><i class="bi bi-calculator me-2 text-warning"></i>Simulador de Inferencia Interactiva</h5>
+        <p class="text-muted small mb-3">Seleccione el algoritmo ya entrenado y los valores de entrada para obtener la predicción de <code>categoria_id</code>.</p>
+
+        {% if todas_metricas %}
+        <form id="simulationForm" onsubmit="ejecutarInferencia(event)">
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small text-uppercase">Algoritmo para inferencia</label>
+                <select id="algoritmo_inferencia" class="form-select border-2 border-primary">
+                    {% for alg in todas_metricas.keys() %}
+                    <option value="{{ alg }}">{{ alg }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <hr class="my-3">
+            <div class="row g-2">
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-dark"><i class="bi bi-currency-dollar text-success me-1"></i>Precio Unitario ($)</label>
+                    <input type="number" step="0.01" id="input_precio_unidad" class="form-control form-control-sm border-2" value="25.50">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-secondary">Margen Unitario ($)</label>
+                    <input type="number" step="0.01" id="input_margen_unitario" class="form-control form-control-sm border-2" value="8.20">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-secondary">Unidades Vendidas</label>
+                    <input type="number" id="input_unidades_vendidas" class="form-control form-control-sm border-2" value="5">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-secondary">Factor Tamaño</label>
+                    <input type="number" id="input_factor_tamano" class="form-control form-control-sm border-2" value="1.0" step="0.1">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-secondary">Tienda</label>
+                    <select id="tienda_seleccionada" class="form-select form-select-sm border-2">
+                        {% for id, info in tiendas_info.items() %}<option value="{{ id }}">{{ info.ciudad }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-secondary">¿Es Feriado?</label>
+                    <select id="input_es_feriado" class="form-select form-select-sm border-2">
+                        <option value="0">No</option><option value="1">Sí</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-bold text-secondary">¿Promoción Activa?</label>
+                    <select id="input_promocion_activa" class="form-select form-select-sm border-2">
+                        <option value="0">No</option><option value="1">Sí</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success w-100 fw-bold mt-4 py-2">
+                <i class="bi bi-lightning-charge-fill me-1"></i>Calcular Inferencia
+            </button>
+        </form>
+        <div id="resultadoSimulacion" class="mt-3 alert text-center fw-bold border-0 shadow-sm p-3" style="display:none;"></div>
+        {% else %}
+        <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>Entrene al menos un algoritmo arriba para habilitar el simulador.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    {% if algoritmos_en_progreso %}
+    // Opción B (entrenamiento asíncrono): mientras haya algún algoritmo
+    // entrenando en segundo plano, esta página se refresca sola cada 20s
+    // para mostrar el resultado apenas esté listo — sin que el usuario
+    // tenga que navegar manualmente a otra página y volver.
+    setTimeout(() => window.location.reload(), 20000);
+    {% endif %}
+
+    const alg = document.getElementById('algoritmoSelect');
+    const est = document.getElementById('estimatorsBlock');
+    if (alg && est) {
+        // A diferencia de Regresión (donde LinearRegression no usa n_estimators),
+        // aquí es DecisionTreeClassifier el que no lo usa (RF/GBC sí).
+        const toggle = () => est.style.display = alg.value === 'DecisionTreeClassifier' ? 'none' : 'block';
+        alg.addEventListener('change', toggle);
+        toggle();
+    }
+
+    const formEntrenamiento = document.getElementById('formEntrenamiento');
+    if (formEntrenamiento) {
+        formEntrenamiento.addEventListener('submit', function () {
+            const btn      = document.getElementById('btnEntrenar');
+            const label    = document.getElementById('btnEntrenarLabel');
+            const spinner  = document.getElementById('btnEntrenarSpinner');
+            if (btn)     btn.disabled = true;
+            if (label)   label.style.display = 'none';
+            if (spinner) spinner.style.display = 'inline-block';
+        });
+    }
+});
+
+// ═══ Cambia las 3 gráficas de imagen (Matriz de Confusión, Curva ROC, Curvas
+//     de Aprendizaje) + el Árbol de Decisión (condicional) + reconstruye la
+//     tabla de Reporte por Clase, según el algoritmo elegido en la columna
+//     "Ver Gráficas" de la tabla comparativa — sin re-entrenar, igual patrón
+//     que M1/M2/M5 (JSON embebido, sin modales). ═══
+function mostrarGraficas(alg) {
+    const bloqueDatos = document.getElementById('datosGraficasJSON');
+    if (!bloqueDatos) return;
+
+    let todasMetricas;
+    try {
+        todasMetricas = JSON.parse(bloqueDatos.textContent);
+    } catch (e) {
+        console.error('No se pudo leer el JSON de métricas:', e);
+        return;
+    }
+
+    const m = todasMetricas[alg];
+    if (!m) return;
+
+    const lbl = document.getElementById('lblAlgGraficos');
+    if (lbl) lbl.textContent = alg;
+
+    actualizarGrafico('contenedorMatrizConfusion', m.grafico_matriz_confusion, 'Matriz de Confusión', 'bi-grid-3x3');
+    actualizarGrafico('contenedorCurvaROC', m.grafico_curva_roc, 'Curva ROC', 'bi-graph-up-arrow');
+    actualizarGrafico('contenedorCurvaAprendizaje', m.grafico_curva_aprendizaje, 'Curvas de Aprendizaje', 'bi-graph-up');
+    actualizarGrafico('contenedorArbolDecision', m.grafico_arbol_decision, 'Árbol de Decisión', 'bi-diagram-2');
+    actualizarReporteClase(m);
+
+    document.querySelectorAll('[data-ver-alg]').forEach(btn => {
+        const activo = btn.dataset.verAlg === alg;
+        btn.classList.toggle('btn-primary', activo);
+        btn.classList.toggle('text-white', activo);
+        btn.classList.toggle('btn-outline-primary', !activo);
+    });
+
+    document.getElementById('contenedorMatrizConfusion')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function actualizarGrafico(contenedorId, srcBase64, altTexto, iconoClase) {
+    const cont = document.getElementById(contenedorId);
+    if (!cont) return;
+    if (srcBase64) {
+        cont.innerHTML = `<div class="p-2 border rounded bg-light"><img src="${srcBase64}" class="img-fluid rounded border d-block mx-auto" alt="${altTexto}"></div>`;
+    } else {
+        cont.innerHTML = `<div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;"><i class="bi ${iconoClase} display-4 d-block mb-2 text-secondary"></i><span class="small">Sin gráfico disponible para este algoritmo.</span></div>`;
+    }
+}
+
+function actualizarReporteClase(m) {
+    const cont = document.getElementById('contenedorReporteClase');
+    if (!cont) return;
+    if (!m.reporte_por_clase || !m.clases) {
+        cont.innerHTML = '<div class="py-5 bg-light rounded border text-center text-muted" style="border-style:dashed!important;"><i class="bi bi-list-check display-4 d-block mb-2 text-secondary"></i><span class="small">Sin reporte todavía.</span></div>';
+        return;
+    }
+    let filas = '';
+    m.clases.forEach(clase => {
+        const r = m.reporte_por_clase[clase];
+        if (!r) return;
+        filas += `<tr><td>${clase}</td><td>${(r.precision*100).toFixed(2)}%</td><td>${(r.recall*100).toFixed(2)}%</td><td>${(r['f1-score']*100).toFixed(2)}%</td><td>${Math.round(r.support)}</td></tr>`;
+    });
+    cont.innerHTML = `<table class="table table-sm table-bordered mb-0">
+        <thead class="table-light small"><tr><th>Clase</th><th>Precision</th><th>Recall</th><th>F1</th><th>Soporte</th></tr></thead>
+        <tbody>${filas}</tbody></table>`;
+}
+
+async function ejecutarInferencia(e) {
+    e.preventDefault();
+    const resBox = document.getElementById('resultadoSimulacion');
+    resBox.style.display = 'block';
+    resBox.className = 'alert alert-warning text-center fw-bold p-2';
+    resBox.innerText = '⏳ Computando inferencia...';
+
+    const payload = { algoritmo_inferencia: document.getElementById('algoritmo_inferencia').value };
+    document.querySelectorAll('#simulationForm input[id^="input_"]').forEach(el => {
+        const key = el.id.replace('input_', '');
+        payload[key] = el.type === 'number' ? (el.value.includes('.') ? parseFloat(el.value) : parseInt(el.value, 10)) : el.value;
+    });
+    document.querySelectorAll('#simulationForm select[id^="input_"]').forEach(el => {
+        payload[el.id.replace('input_', '')] = el.value;
+    });
+    const tda = document.getElementById('tienda_seleccionada');
+    if (tda) payload['tienda_id'] = parseInt(tda.value, 10);
+
+    try {
+        const r = await fetch("{{ url_for('classification.simular_prediccion', modulo_id=modulo_id) }}", {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        if (d.status === 'success') {
+            let filasProba = Object.entries(d.probabilidades || {})
+                .sort((a,b) => b[1]-a[1])
+                .map(([k,v]) => `<div class="d-flex justify-content-between small px-2"><span>${k}</span><strong>${(v*100).toFixed(1)}%</strong></div>`).join('');
+            resBox.className = 'alert alert-success text-center fw-bold border-0 shadow-sm p-3';
+            resBox.innerHTML = `<div class="fs-5 mb-2"><i class="bi bi-check-circle-fill me-2"></i>[${d.algoritmo}] Predicción: <span class="badge bg-dark px-3 py-2">${d.clase_predicha}</span></div>${filasProba}`;
+        } else {
+            resBox.className = 'alert alert-danger text-center small p-2';
+            resBox.innerText = '❌ ' + d.message;
+        }
+    } catch(err) {
+        resBox.className = 'alert alert-danger text-center small p-2';
+        resBox.innerText = '❌ Error de comunicación con el servidor.';
+    }
+}
+</script>
+{% endblock %}

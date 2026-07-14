@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Explorador de Datos Duales y Procesados - ISTG{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1" style="color: var(--istg-blue) !important;">
+                <i class="bi bi-database-check me-2"></i>Auditoría y Exploración de Datos
+            </h2>
+            <p class="text-muted mb-0">Inspección de Datasets: Comparativa pedagógica entre Fuentes Base y Matrices de Características.</p>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm" id="topLevelTubes" role="tablist">
+        <li class="nav-item flex-fill text-center">
+            <a class="nav-link fw-bold {% if active_tab == 'raw' %}active bg-primary text-white{% else %}text-secondary{% endif %}" 
+               href="{{ url_for('data_manager.explorer', tab='raw', subtab='tx') }}">
+                <i class="bi bi-layers-half me-2"></i>1. Bloque de Datos Originales (En Bruto)
+            </a>
+        </li>
+        <li class="nav-item flex-fill text-center">
+            <a class="nav-link fw-bold {% if active_tab == 'proc' %}active bg-info text-dark{% else %}text-secondary{% endif %} {% if not proc_initialized %}disabled text-muted{% endif %}" 
+               href="{{ url_for('data_manager.explorer', tab='proc', subtab='tx_p') }}">
+                <i class="bi bi-cpu-fill me-2"></i>2. Bloque de Datos Pulidos (Feature Engineering)
+            </a>
+        </li>
+    </ul>
+
+    {% if active_tab == 'raw' %}
+        {% if not raw_initialized %}
+            <div class="alert alert-warning border-0 shadow-sm text-center p-5">
+                <i class="bi bi-exclamation-triangle display-4 text-warning d-block mb-3"></i>
+                <h4 class="fw-bold">Hito de Datos No Inicializado</h4>
+                <p class="text-muted">El administrador de gobierno aún no ha disparado la simulación de datos en bruto.</p>
+            </div>
+        {% else %}
+            <div class="row g-3 mb-4 text-center">
+                <div class="col-6 col-md-4">
+                    <div class="card border-0 shadow-sm p-3 bg-white">
+                        <span class="text-muted small uppercase fw-bold">Filas Transaccionales</span>
+                        <h3 class="fw-bold text-primary mt-1">{{ stats.tx_rows }}</h3>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4">
+                    <div class="card border-0 shadow-sm p-3 bg-white">
+                        <span class="text-muted small uppercase fw-bold">Filas Demanda Semanal</span>
+                        <h3 class="fw-bold text-success mt-1">{{ stats.sem_rows }}</h3>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="card border-0 shadow-sm p-3 bg-white">
+                        <span class="text-muted small uppercase fw-bold">Venta Total Simulada</span>
+                        <h3 class="fw-bold text-dark mt-1">{{ stats.ingresos }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 bg-white mb-4">
+                <ul class="nav nav-tabs mb-3" id="rawTabs">
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold {% if active_subtab == 'tx' %}active text-primary border-primary border-bottom-0{% else %}text-muted{% endif %}" 
+                           href="{{ url_for('data_manager.explorer', tab='raw', subtab='tx', page_tx=p_tx, page_sem=p_sem) }}">
+                            <i class="bi bi-cart3 me-2"></i>Transacciones Originales
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold {% if active_subtab == 'sem' %}active text-success border-success border-bottom-0{% else %}text-muted{% endif %}" 
+                           href="{{ url_for('data_manager.explorer', tab='raw', subtab='sem', page_tx=p_tx, page_sem=p_sem) }}">
+                            <i class="bi bi-calendar3 me-2"></i>Demanda Semanal Original
+                        </a>
+                    </li>
+                </ul>
+
+                {% if active_subtab == 'tx' %}
+                    <h5 class="fw-bold pb-2 mb-3" style="color: var(--istg-blue);">Muestra del Dataset de Transacciones Básicas</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped small align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID TX</th><th>Fecha</th><th>Ciudad</th><th>Provincia</th><th>Categoría</th><th>Producto</th><th>Cliente</th><th>Unidades</th><th>Total Venta</th><th>Feriado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in df_tx %}
+                                <tr>
+                                    <td><code>{{ row.transaccion_id }}</code></td><td>{{ row.fecha }}</td><td>{{ row.ciudad }}</td><td>{{ row.provincia }}</td><td>{{ row.categoria_id }}</td><td>{{ row.producto }}</td><td>{{ row.tipo_cliente }}</td><td>{{ row.unidades_vendidas }}</td><td>${{ row.total_venta }}</td><td>{{ row.es_feriado }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <span class="text-muted small">Página {{ p_tx }} de {{ stats.tx_max }}</span>
+                        <a href="{{ url_for('data_manager.explorer', tab='raw', subtab='tx', page_tx=p_tx+1, page_sem=p_sem) }}" class="btn btn-sm btn-outline-primary fw-bold">Paginación Transacciones <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                {% else %}
+                    <h5 class="fw-bold pb-2 mb-3 text-success">Muestra del Dataset de Demanda Semanal Básica</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped small align-middle">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Tienda ID</th><th>Año</th><th>Semana ISO</th><th>Demanda Semanal</th><th>Venta Total</th><th>Precio Mediano</th><th>Es Feriado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in df_sem %}
+                                <tr>
+                                    <td><code>{{ row.tienda_id }}</code></td><td>{{ row.año }}</td><td>{{ row.semana_iso }}</td><td class="fw-bold text-success">{{ row.demanda_semanal }}</td><td>${{ "%.2f"|format(row.total_venta_semanal) if row.total_venta_semanal else '0.00' }}</td><td>${{ "%.2f"|format(row.precio_mediano) if row.precio_mediano else '0.00' }}</td><td>{{ row.es_feriado }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <span class="text-muted small">Página {{ p_sem }} de {{ stats.sem_max }}</span>
+                        <a href="{{ url_for('data_manager.explorer', tab='raw', subtab='sem', page_tx=p_tx, page_sem=p_sem+1) }}" class="btn btn-sm btn-outline-success fw-bold">Paginación Semanal <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+    {% elif active_tab == 'proc' %}
+        <div class="row g-3 mb-4 text-center">
+            <div class="col-6">
+                <div class="card border-0 shadow-sm p-3 bg-dark text-white">
+                    <span class="text-muted small fw-bold">Dimensiones Transaccionales (One-Hot)</span>
+                    <h3 class="fw-bold text-info mt-1">{{ stats.tx_p_cols }} Variables</h3>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card border-0 shadow-sm p-3 bg-dark text-white">
+                    <span class="text-muted small fw-bold">Atributos Semanales Analíticos</span>
+                    <h3 class="fw-bold text-warning mt-1">{{ stats.sem_p_cols }} Características</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm p-4 bg-white">
+            <ul class="nav nav-tabs mb-3" id="procTabs">
+                <li class="nav-item">
+                    <a class="nav-link fw-bold {% if active_subtab == 'tx_p' %}active text-info border-info border-bottom-0{% else %}text-muted{% endif %}" 
+                       href="{{ url_for('data_manager.explorer', tab='proc', subtab='tx_p', page_tx_p=p_tx_p, page_sem_p=p_sem_p) }}">
+                        <i class="bi bi-braces-asterisk me-2"></i>Transacciones Vectorizadas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-bold {% if active_subtab == 'sem_p' %}active text-warning border-warning border-bottom-0{% else %}text-muted{% endif %}" 
+                       href="{{ url_for('data_manager.explorer', tab='proc', subtab='sem_p', page_tx_p=p_tx_p, page_sem_p=p_sem_p) }}">
+                        <i class="bi bi-graph-up-arrow me-2"></i>Demanda Semanal Vectorizada
+                    </a>
+                </li>
+            </ul>
+
+            {% if active_subtab == 'tx_p' %}
+                <h5 class="fw-bold pb-2 mb-3 text-info"><i class="bi bi-cpu-fill me-2"></i>Matriz Transaccional Procesada (Grano Fino)</h5>
+                <p class="text-muted small">Estructura limpia para predicción de unidades vendidas individuales. Muestra codificaciones numéricas listas para regresores.</p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover text-nowrap small align-middle" style="font-family: monospace; font-size: 0.8rem;">
+                        <thead class="table-info">
+                            <tr>
+                                <th>año</th><th>semana_iso</th><th>dia_semana</th><th>tienda_id</th><th>factor_tamano</th><th>antiguedad_tienda</th><th>precio_unidad</th><th>unidades_vendidas</th><th>es_feriado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in df_tx_p %}
+                            <tr>
+                                <td>{{ row.año }}</td><td>{{ row.semana_iso }}</td><td>{{ row.dia_semana }}</td><td>{{ row.tienda_id }}</td><td>{{ row.factor_tamano }}</td><td>{{ row.antiguedad_tienda }}</td><td>${{ "%.2f"|format(row.precio_unitario) if row.precio_unitario else row.precio_unidad }}</td><td class="fw-bold text-info">{{ row.unidades_vendidas }}</td><td>{{ row.es_feriado }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted small">Página {{ p_tx_p }} de {{ stats.tx_p_max }}</span>
+                    <a href="{{ url_for('data_manager.explorer', tab='proc', subtab='tx_p', page_tx_p=p_tx_p+1, page_sem_p=p_sem_p) }}" class="btn btn-sm btn-info fw-bold">Paginación Transacciones Proc <i class="bi bi-arrow-right"></i></a>
+                </div>
+            {% else %}
+                <h5 class="fw-bold pb-2 mb-3 text-warning"><i class="bi bi-braces me-2"></i>Matriz Vectorizada Semanal (Grano Agregado)</h5>
+                <p class="text-muted small">Estructura analítica con inyección de retardos temporales (<code>demanda_lag_1</code>, <code>demanda_lag_2</code>) y transformaciones trigonométricas cíclicas.</p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover text-nowrap small align-middle" style="font-family: monospace; font-size: 0.8rem;">
+                        <thead class="table-warning text-dark">
+                            <tr>
+                                <th>tienda_id</th><th>año</th><th>semana_iso</th><th>demanda_semanal</th><th>demanda_lag_1</th><th>demanda_lag_2</th><th>semana_sin</th><th>semana_cos</th><th>reg_Costa</th><th>reg_Sierra</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in df_sem_p %}
+                            <tr>
+                                <td>{{ row.tienda_id }}</td><td>{{ row.año }}</td><td>{{ row.semana_iso }}</td><td class="fw-bold text-success">{{ row.demanda_semanal }}</td><td class="text-primary">{{ row.demanda_lag_1 }}</td><td class="text-muted">{{ row.demanda_lag_2 }}</td><td>{{ "%.4f"|format(row.semana_sin) }}</td><td>{{ "%.4f"|format(row.semana_cos) }}</td><td>{{ row.reg_Costa }}</td><td>{{ row.reg_Sierra }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted small">Página {{ p_sem_p }} de {{ stats.sem_p_max }}</span>
+                    <a href="{{ url_for('data_manager.explorer', tab='proc', subtab='sem_p', page_tx_p=p_tx_p, page_sem_p=p_sem_p+1) }}" class="btn btn-sm btn-warning text-dark fw-bold">Paginación Demanda Semanal Proc <i class="bi bi-arrow-right"></i></a>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

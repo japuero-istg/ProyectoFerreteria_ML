@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Clasificación · Tipo de Cliente{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-diagram-3 text-primary me-2"></i>{{ nombre_modulo }}</h4>
+    <ul class="nav nav-pills">
+        <li class="nav-item">
+            <a class="nav-link {% if modulo_id == 3 %}active bg-primary{% endif %}" href="{{ url_for('classification.dashboard', modulo_id=3) }}">M3: Categoría</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if modulo_id == 6 %}active bg-primary{% endif %}" href="{{ url_for('classification.dashboard', modulo_id=6) }}">M6: Tipo de Cliente</a>
+        </li>
+    </ul>
+</div>
+
+<div class="alert alert-light border small">
+    <i class="bi bi-info-circle text-primary me-1"></i>
+    Predice el <strong>tipo de cliente</strong> (4 clases) a partir del patrón de compra observable
+    <strong>antes</strong> de registrar la venta (precio, categoría, tienda, contexto comercial).
+    Excluye <code>unidades_vendidas</code> y <code>total_venta</code> — en producción real no se conocen
+    antes de que el cliente decida cuánto comprar.
+</div>
+
+<!-- ═══════════════ BLOQUE PEDAGÓGICO (DEB-05) ═══════════════ -->
+{% if distribucion_clases %}
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-bar-chart-steps me-1"></i>Distribución Real de Clases (DEB-05)</div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">
+            <code>tipo_cliente</code> está desbalanceado en el dataset real — por eso este módulo activa
+            <code>class_weight='balanced'</code> (Random Forest / Árbol de Decisión) y <code>sample_weight</code>
+            balanceado vía <code>compute_sample_weight</code> (Gradient Boosting). KNN queda sin balancear:
+            no soporta ninguno de los dos mecanismos (limitación conocida del algoritmo).
+        </p>
+        {% for c in distribucion_clases %}
+        <div class="mb-2">
+            <div class="d-flex justify-content-between small mb-1">
+                <span class="fw-semibold">{{ c.clase }}</span>
+                <span>{{ c.porcentaje }}%</span>
+            </div>
+            <div class="progress" style="height: 10px;">
+                <div class="progress-bar bg-primary" style="width: {{ c.porcentaje }}%;"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <!-- ═══════════════ TABLA COMPARATIVA ═══════════════ -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-table me-1"></i>Comparativa de Algoritmos</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="table-light">
+                                <th>Algoritmo</th>
+                                <th>Accuracy</th>
+                                <th>Precisión (macro)</th>
+                                <th>Recall (macro)</th>
+                                <th>F1 (macro)</th>
+                                <th>AUC-ROC (macro OvR)</th>
+                                <th>CV F1 (5-fold)</th>
+                                <th>Balanceo</th>
+                                <th>Gráficas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alg in algoritmos_validos %}
+                            <tr>
+                                <td class="fw-semibold">{{ alg }}</td>
+                                {% if todas_metricas.get(alg) %}
+                                {% set m = todas_metricas[alg] %}
+                                <td>{{ "%.2f"|format(m.accuracy * 100) }}%</td>
+                                <td>{{ "%.2f"|format(m.precision_macro * 100) }}%</td>
+                                <td>{{ "%.2f"|format(m.recall_macro * 100) }}%</td>
+                                <td>{{ "%.2f"|format(m.f1_macro * 100) }}%</td>
+                                <td>{{ m.auc_roc_macro_ovr if m.auc_roc_macro_ovr is not none else "—" }}</td>
+                                <td>{{ m.cv_f1_macro_promedio if m.cv_f1_macro_promedio is not none else "—" }}</td>
+                                <td>
+                                    {% if alg == "KNeighborsClassifier" %}
+                                    <span class="badge bg-secondary">Sin balancear</span>
+                                    {% elif alg == "GradientBoostingClassifier" %}
+                                    <span class="badge bg-warning text-dark">sample_weight</span>
+                                    {% else %}
+                                    <span class="badge bg-success">class_weight</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalGraficas{{ loop.index }}">
+                                        <i class="bi bi-bar-chart-line"></i> Ver Gráficas
+                                    </button>
+                                </td>
+                                {% else %}
+                                <td colspan="6" class="text-muted fst-italic">Aún no entrenado</td>
+                                <td>—</td>
+                                <td>—</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="small text-muted mt-2 mb-0">
+                    <i class="bi bi-file-earmark-text me-1"></i>Reporte por clase (precision/recall/f1 individuales)
+                    disponible en el modal de gráficas de cada algoritmo entrenado.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════ ENTRENAMIENTO ═══════════════ -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-cpu me-1"></i>Entrenar Modelo</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('classification.entrenar_modelo', modulo_id=modulo_id) }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Algoritmo</label>
+                        <select name="algoritmo" class="form-select">
+                            {% for alg in algoritmos_validos %}
+                            <option value="{{ alg }}">{{ alg }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">n_estimators (RF / GBC)</label>
+                        <input type="number" name="n_estimators" class="form-control" value="100" min="10" max="500">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Test Size</label>
+                        <input type="number" name="test_size" class="form-control" value="0.20" min="0.1" max="0.4" step="0.05">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-play-circle me-1"></i>Ejecutar Pipeline de Entrenamiento
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════ SIMULADOR ═══════════════ -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-magic me-1"></i>Simulador de Inferencia Interactiva</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Algoritmo</label>
+                        <select id="sim-algoritmo" class="form-select form-select-sm">
+                            {% for alg in algoritmos_validos %}
+                            <option value="{{ alg }}">{{ alg }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Tienda</label>
+                        <select id="sim-tienda_id" class="form-select form-select-sm">
+                            {% for id, info in tiendas_info.items() %}
+                            <option value="{{ id }}">{{ info.ciudad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Categoría del Producto</label>
+                        <select id="sim-categoria" class="form-select form-select-sm">
+                            <option value="Eléctrico">Eléctrico</option>
+                            <option value="Herramientas">Herramientas</option>
+                            <option value="Jardín">Jardín</option>
+                            <option value="Materiales de Construcción">Materiales de Construcción</option>
+                            <option value="Pintura">Pintura</option>
+                            <option value="Plomería">Plomería</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Día de la Semana (1-7)</label>
+                        <input id="sim-dia_semana" type="number" min="1" max="7" class="form-control form-control-sm" value="6">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small fw-bold">Precio Unidad</label>
+                        <input id="sim-precio_unidad" type="number" step="0.01" class="form-control form-control-sm" value="45.00">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small fw-bold">Factor Tamaño</label>
+                        <input id="sim-factor_tamano" type="number" step="0.05" class="form-control form-control-sm" value="1.0">
+                    </div>
+                    <div class="col-4 form-check pt-4 ps-4">
+                        <input id="sim-es_feriado" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small">Es Feriado</label>
+                    </div>
+                    <div class="col-6 form-check pt-2 ps-4">
+                        <input id="sim-promocion_activa" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small">Promoción Activa</label>
+                    </div>
+                </div>
+                <button id="btn-simular" class="btn btn-outline-primary w-100 mt-3">
+                    <i class="bi bi-lightning-charge me-1"></i>Predecir Tipo de Cliente
+                </button>
+                <div id="resultado-simulacion" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ MODALES DE GRÁFICAS ═══════════════ -->
+{% for alg in algoritmos_validos %}
+{% if todas_metricas.get(alg) %}
+{% set m = todas_metricas[alg] %}
+<div class="modal fade" id="modalGraficas{{ loop.index }}" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Gráficas de Diagnóstico · {{ alg }} (Módulo 6)</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6"><h6 class="small text-primary">Matriz de Confusión</h6>
+                        {% if m.grafico_matriz_confusion %}<img src="{{ m.grafico_matriz_confusion }}" class="img-fluid rounded border">{% else %}<p class="text-muted small">No disponible</p>{% endif %}
+                    </div>
+                    <div class="col-md-6"><h6 class="small text-primary">Curva ROC (One-vs-Rest)</h6>
+                        {% if m.grafico_curva_roc %}<img src="{{ m.grafico_curva_roc }}" class="img-fluid rounded border">{% else %}<p class="text-muted small">No disponible</p>{% endif %}
+                    </div>
+                    <div class="col-md-6"><h6 class="small text-primary">Curvas de Aprendizaje</h6>
+                        {% if m.grafico_curva_aprendizaje %}<img src="{{ m.grafico_curva_aprendizaje }}" class="img-fluid rounded border">{% else %}<p class="text-muted small">No disponible</p>{% endif %}
+                    </div>
+                    <div class="col-md-6"><h6 class="small text-primary">Árbol de Decisión</h6>
+                        {% if m.grafico_arbol_decision %}<img src="{{ m.grafico_arbol_decision }}" class="img-fluid rounded border">{% else %}<p class="text-muted small">Solo disponible para DecisionTreeClassifier</p>{% endif %}
+                    </div>
+                </div>
+                {% if m.reporte_por_clase %}
+                <h6 class="small text-primary">Reporte por Clase</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light"><tr><th>Clase</th><th>Precision</th><th>Recall</th><th>F1</th><th>Soporte</th></tr></thead>
+                        <tbody>
+                            {% for clase in m.clases %}
+                            {% if m.reporte_por_clase.get(clase) %}
+                            <tr>
+                                <td>{{ clase }}</td>
+                                <td>{{ "%.2f"|format(m.reporte_por_clase[clase]['precision'] * 100) }}%</td>
+                                <td>{{ "%.2f"|format(m.reporte_por_clase[clase]['recall'] * 100) }}%</td>
+                                <td>{{ "%.2f"|format(m.reporte_por_clase[clase]['f1-score'] * 100) }}%</td>
+                                <td>{{ m.reporte_por_clase[clase]['support']|int }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('btn-simular').addEventListener('click', async () => {
+    const payload = {
+        algoritmo_inferencia: document.getElementById('sim-algoritmo').value,
+        tienda_id: document.getElementById('sim-tienda_id').value,
+        categoria_seleccionada: document.getElementById('sim-categoria').value,
+        dia_semana: document.getElementById('sim-dia_semana').value,
+        precio_unidad: document.getElementById('sim-precio_unidad').value,
+        factor_tamano: document.getElementById('sim-factor_tamano').value,
+        es_feriado: document.getElementById('sim-es_feriado').checked ? 1 : 0,
+        promocion_activa: document.getElementById('sim-promocion_activa').checked ? 1 : 0,
+    };
+    const box = document.getElementById('resultado-simulacion');
+    box.innerHTML = '<span class="text-muted small">Calculando...</span>';
+    try {
+        const resp = await fetch("{{ url_for('classification.simular_prediccion', modulo_id=modulo_id) }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            let filas = Object.entries(data.probabilidades || {})
+                .sort((a,b) => b[1]-a[1])
+                .map(([k,v]) => `<div class="d-flex justify-content-between small"><span>${k}</span><strong>${(v*100).toFixed(1)}%</strong></div>`).join('');
+            box.innerHTML = `<div class="alert alert-success mb-2"><strong>Predicción:</strong> ${data.clase_predicha}</div>${filas}`;
+        } else {
+            box.innerHTML = `<div class="alert alert-danger small">${data.message}</div>`;
+        }
+    } catch (e) {
+        box.innerHTML = `<div class="alert alert-danger small">Error de red: ${e}</div>`;
+    }
+});
+</script>
+{% endblock %}

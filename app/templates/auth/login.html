@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}ISTG - Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 75vh;">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <img src="{{ url_for('static', filename='images/Home-Depot-Logo2.png') }}" alt="Home Depot Logo" class="img-fluid mb-2" style="max-height: 100px;">
+            <h4 class="fw-bold mt-2 text-dark" style="color: var(--brand-orange) !important;">Plataforma Analítica</h4>
+            <p class="text-muted small">Ingresa tus credenciales para acceder al entorno de Machine Learning</p>
+        </div>
+
+        <div class="card border-0 shadow-sm p-4">
+            <div class="card-body">
+                <form action="{{ url_for('auth.login') }}" method="POST">
+                    
+                    <div class="mb-3">
+                        <label for="username_or_email" class="form-label text-muted small fw-bold">Usuario o Correo Electrónico</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control bg-light border-0" id="username_or_email" name="username_or_email" placeholder="ejemplo@istg.edu.ec" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="password" class="form-label text-muted small fw-bold mb-0">Contraseña</label>
+                        </div>
+                        <input type="password" class="form-control bg-light border-0" id="password" name="password" placeholder="••••••••" required>
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                        <label class="form-check-label text-muted small" for="remember">Mantener sesión iniciada</label>
+                    </div>
+
+                    <button type="submit" class="btn w-100 text-white fw-bold py-2 shadow-sm" style="background-color: var(--brand-orange);">
+                        Ingresar <i class="bi bi-box-arrow-in-right ms-1"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="text-muted small">¿No tienes una cuenta académica? <a href="{{ url_for('auth.register') }}" class="text-decoration-none fw-bold" style="color: var(--brand-orange);">Regístrate aquí</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

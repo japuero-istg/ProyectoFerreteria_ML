@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Administrativo de Gobierno de Datos - ISTG{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0" style="border-left: 5px solid var(--brand-orange) !important;">
+                <div class="card-body bg-light">
+                    <h2 class="card-title mb-1" style="color: var(--brand-orange); font-weight: 700;">
+                        <i class="bi bi-shield-lock-fill me-2"></i>Consola del Administrador de Gobierno
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Evaluación del Ciclo de Vida del Proyecto ML: Control segregado de Datos en Bruto y Feature Engineering.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white pt-3 border-0">
+                    <h5 class="fw-bold" style="color: var(--brand-orange);">
+                        <span class="badge bg-secondary me-2">Hito 1</span>Fase 3: Datos Históricos en Bruto
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <div>
+                        <p class="text-muted small">
+                            Simula y levanta el entorno transaccional comercial de 5 años continuos para las 10 sucursales. Produce los archivos raíz sin transformaciones matemáticas.
+                        </p>
+                        <div class="mb-3">
+                            <span class="small text-muted d-block mb-1">Estado del Hito:</span>
+                            {% if raw_initialized %}
+                            <span class="badge bg-success p-2"><i class="bi bi-check-circle-fill me-1"></i> Datasets en Bruto Inicializados</span>
+                            {% else %}
+                            <span class="badge bg-danger p-2"><i class="bi bi-x-circle-fill me-1"></i> Sin Datos en Disco</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <form action="{{ url_for('data_manager.generate') }}" method="POST" id="formRaw">
+                        <button type="submit" class="btn w-100 text-white fw-bold py-2 mt-3" style="background-color: var(--brand-orange);" id="btnRaw">
+                            <i class="bi bi-database-fill-gear me-2"></i>1. Simular Datos en Bruto
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white pt-3 border-0">
+                    <h5 class="fw-bold" style="color: var(--brand-orange);">
+                        <span class="badge bg-secondary me-2">Hito 2</span>Pipeline de Preparación para ML
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <div>
+                        <p class="text-muted small">
+                            Aplica ingeniería de características (*Feature Engineering*). Toma los archivos brutos, calcula los *lags* de series temporales, aplica mapeo trigonométrico de estacionalidad anual y ejecuta *One-Hot Encodings*.
+                        </p>
+                        <div class="mb-3">
+                            <span class="small text-muted d-block mb-1">Estado del Hito:</span>
+                            {% if proc_initialized %}
+                            <span class="badge bg-info text-dark p-2"><i class="bi bi-cpu-fill me-1"></i> Datos Listos para Modelamiento (Fase 4)</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark p-2"><i class="bi bi-exclamation-triangle-fill me-1"></i> Pendiente de Preprocesamiento</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <form action="{{ url_for('data_manager.preprocess') }}" method="POST" id="formProc">
+                        <button type="submit" class="btn btn-dark w-100 fw-bold py-2 mt-3" {% if not raw_initialized %}disabled{% endif %} id="btnProc">
+                            <i class="bi bi-calculator me-2"></i>2. Ejecutar Feature Engineering
+                        </button>
+                        {% if not raw_initialized %}
+                        <div class="form-text text-danger extra-small text-center mt-1">Requiere inicializar primero el Hito 1.</div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('formRaw').addEventListener('submit', function() {
+        var btn = document.getElementById('btnRaw');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Simulando 5 Años de Transacciones...';
+    });
+    
+    if(document.getElementById('formProc')) {
+        document.getElementById('formProc').addEventListener('submit', function() {
+            var btn = document.getElementById('btnProc');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando Pipeline Matemático...';
+        });
+    }
+</script>
+{% endblock %}
